@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
 from google import genai
 import os
+import json
+import traceback
 
 app = Flask(__name__)
 
-# Khởi tạo Gemini Client (Lấy API Key từ biến môi trường hoặc thay trực tiếp chuỗi key của bạn)
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6Iii3oPTsZHigl0mOiigybM2YGcbMAiT0n2GwzeAZ36fAY")
+# Lay API Key tu bien moi truong GEMINI_API_KEY
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_KEY)
 
 @app.route('/api/analyze', methods=['POST'])
@@ -13,26 +15,26 @@ def analyze_taixiu():
     try:
         data = request.get_json()
         if not data or 'sessions' not in data:
-            return jsonify({"error": "Thiếu dữ liệu lịch sử phiên!"}), 400
+            return jsonify({"error": "Thieu du lieu lich su phien!"}), 400
         
         sessions = data['sessions']
         total_sessions = len(sessions)
         
         prompt = f"""
-        Bạn là một chuyên gia phân tích xác suất và quy luật cầu Tài Xỉu trong game.
-        Dưới đây là lịch sử {total_sessions} phiên gần nhất theo thứ tự từ cũ đến mới:
+        Ban la mot chuyen gia phan tich xac suat va quy luat cau Tai Xiu trong game.
+        Dưới đây la lich su {total_sessions} phien gan nhat theo thu tu tu cu den moi:
         {sessions}
 
-        Nhiệm vụ của bạn:
-        1. Phân tích các dạng cầu (Cầu 1-1, Cầu 2-2, Cầu bệt, Cầu đảo, v.v.).
-        2. Quyết định cuối cùng: nên đánh "TAI", "XIU", hay "SKIP".
-        3. Viết giải thích ngắn gọn lý do (tối đa 15 từ).
-        4. Đề xuất số tiền cược (mặc định 1000 đến 5000).
+        Nhiem vu cua ban:
+        1. Phan tich cac dang cau.
+        2. Quyet dinh cuoi cung: nen danh "TAI", "XIU", hay "SKIP".
+        3. Viet giai thich ngan gon ly do (toi da 15 tu).
+        4. De xuat so tien cuoc (mac dinh 1000 den 5000).
 
-        YÊU CẦU BẮT BUỘC: Trả về kết quả DUY NHẤT dạng JSON thuần túy:
+        YEU CAU: Tra ve ket qua hoan toan bang dinh dang JSON thuan tuy (khong kem markdown) voi cau truc:
         {{
-            "prediction": "TAI hoặc XIU hoặc SKIP",
-            "info": "Mô tả ngắn gọn cầu",
+            "prediction": "TAI",
+            "info": "Mo ta ngan gon",
             "stake": 1000
         }}
         """
@@ -48,17 +50,17 @@ def analyze_taixiu():
         elif "```" in ai_text:
             ai_text = ai_text.split("```")[1].split("```")[0].strip()
 
-        import json
         result_json = json.loads(ai_text)
         return jsonify(result_json), 200
 
     except Exception as e:
-        print(f"Lỗi: {str(e)}")
+        traceback.print_exc()
+        error_str = str(e)
         return jsonify({
             "prediction": "SKIP",
-            "info": "Lỗi phân tích từ Server AI",
+            "info": f"Loi Gemini: {error_str[:30]}",
             "stake": 1000
-        }, 500)
+        }), 200
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
