@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
-from google import genai
+from openai import OpenAI
 import os
+import json
 
 app = Flask(__name__)
 
-# Khởi tạo Gemini Client (Lấy API Key từ biến môi trường hoặc thay trực tiếp chuỗi key của bạn)
-GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "DIET_API_KEY_CUA_BAN_VAO_DAY")
-client = genai.Client(api_key=GEMINI_KEY)
+# Khởi tạo OpenAI Client (Lấy API Key từ biến môi trường)
+OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "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")
+client = OpenAI(api_key=OPENAI_KEY)
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_taixiu():
@@ -29,7 +30,7 @@ def analyze_taixiu():
         3. Viết giải thích ngắn gọn lý do (tối đa 15 từ).
         4. Đề xuất số tiền cược (mặc định 1000 đến 5000).
 
-        YÊU CẦU BẮT BUỘC: Trả về kết quả DUY NHẤT dạng JSON thuần túy:
+        YÊU CẦU BẮT BUỘC: Trả về kết quả dưới dạng JSON với các khóa chính xác:
         {{
             "prediction": "TAI hoặc XIU hoặc SKIP",
             "info": "Mô tả ngắn gọn cầu",
@@ -37,18 +38,16 @@ def analyze_taixiu():
         }}
         """
 
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=prompt,
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",  # Hoặc gpt-3.5-turbo
+            messages=[
+                {"role": "system", "content": "You are a professional game strategy analyst. You must always respond with valid JSON matching the requested keys."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
         )
         
-        ai_text = response.text.strip()
-        if "```json" in ai_text:
-            ai_text = ai_text.split("```json")[1].split("```")[0].strip()
-        elif "```" in ai_text:
-            ai_text = ai_text.split("```")[1].split("```")[0].strip()
-
-        import json
+        ai_text = response.choices[0].message.content.strip()
         result_json = json.loads(ai_text)
         return jsonify(result_json), 200
 
@@ -56,9 +55,9 @@ def analyze_taixiu():
         print(f"Lỗi: {str(e)}")
         return jsonify({
             "prediction": "SKIP",
-            "info": "Lỗi phân tích từ Server AI",
+            "info": "Lỗi phân tích từ Server OpenAI",
             "stake": 1000
-        }, 500)
+        }), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
