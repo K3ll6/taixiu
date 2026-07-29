@@ -29,6 +29,7 @@ def analyze_taixiu():
         2. Quyet dinh cuoi cung: nen danh "TAI", "XIU", hay "SKIP".
         3. Viet giai thich ngan gon ly do (toi da 15 tu).
         4. De xuat so tien cuoc (mac dinh 1000 đến 5000).
+        5. Tra loi khong go tieng viet co dau
 
         YEU CAU: Tra ve ket qua hoan toan bang dinh dang JSON thuan tuy (khong kem markdown) voi cau truc:
         {{
