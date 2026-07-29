@@ -1,14 +1,12 @@
 from flask import Flask, request, jsonify
-from openai import OpenAI
+from google import genai
 import os
-import json
-import traceback
 
 app = Flask(__name__)
 
-# Lấy API Key từ biến môi trường
-OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "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")
-client = OpenAI(api_key=OPENAI_KEY)
+# Khởi tạo Gemini Client (Lấy API Key từ biến môi trường hoặc thay trực tiếp chuỗi key của bạn)
+GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6Iii3oPTsZHigl0mOiigybM2YGcbMAiT0n2GwzeAZ36fAY")
+client = genai.Client(api_key=GEMINI_KEY)
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_taixiu():
@@ -26,43 +24,41 @@ def analyze_taixiu():
         {sessions}
 
         Nhiệm vụ của bạn:
-        1. Phân tích các dạng cầu.
+        1. Phân tích các dạng cầu (Cầu 1-1, Cầu 2-2, Cầu bệt, Cầu đảo, v.v.).
         2. Quyết định cuối cùng: nên đánh "TAI", "XIU", hay "SKIP".
         3. Viết giải thích ngắn gọn lý do (tối đa 15 từ).
         4. Đề xuất số tiền cược (mặc định 1000 đến 5000).
 
-        YÊU CẦU: Trả về kết quả hoàn toàn bằng định dạng JSON thuần túy, không có text ngoài với cấu trúc sau:
+        YÊU CẦU BẮT BUỘC: Trả về kết quả DUY NHẤT dạng JSON thuần túy:
         {{
-            "prediction": "TAI",
-            "info": "Mo ta ngan gon",
+            "prediction": "TAI hoặc XIU hoặc SKIP",
+            "info": "Mô tả ngắn gọn cầu",
             "stake": 1000
         }}
         """
 
-        response = client.chat.completions.create(
-            model="gpt-3.5-turbo",  # Dùng gpt-3.5-turbo cho độ ổn định cao
-            messages=[
-                {"role": "system", "content": "You are a professional game strategy analyst. You must output valid JSON only."},
-                {"role": "user", "content": prompt}
-            ],
-            response_format={"type": "json_object"}
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
         )
         
-        ai_text = response.choices[0].message.content.strip()
+        ai_text = response.text.strip()
+        if "```json" in ai_text:
+            ai_text = ai_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in ai_text:
+            ai_text = ai_text.split("```")[1].split("```")[0].strip()
+
+        import json
         result_json = json.loads(ai_text)
         return jsonify(result_json), 200
 
     except Exception as e:
-        # In log chi tiết trên console của Render
-        traceback.print_exc()
-        error_str = str(e)
-        
-        # Trả lỗi chi tiết về game để bạn biết chính xác bị gì
+        print(f"Lỗi: {str(e)}")
         return jsonify({
             "prediction": "SKIP",
-            "info": f"Loi OpenAI: {error_str[:35]}",
+            "info": "Lỗi phân tích từ Server AI",
             "stake": 1000
-        }), 200
+        }, 500)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
