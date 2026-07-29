@@ -38,9 +38,8 @@ def analyze_taixiu():
         }}
         """
 
-        # Su dung gemini-1.5-flash de tranh loi 404
         response = client.models.generate_content(
-            model='gemini-1.5-flash',
+            model='gemini-2.0-flash',
             contents=prompt,
         )
         
