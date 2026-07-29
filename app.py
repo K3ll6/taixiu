@@ -6,7 +6,6 @@ import traceback
 
 app = Flask(__name__)
 
-# Lay API Key tu bien moi truong GEMINI_API_KEY
 GEMINI_KEY = os.environ.get("GEMINI_API_KEY", "")
 client = genai.Client(api_key=GEMINI_KEY)
 
@@ -29,7 +28,7 @@ def analyze_taixiu():
         1. Phan tich cac dang cau.
         2. Quyet dinh cuoi cung: nen danh "TAI", "XIU", hay "SKIP".
         3. Viet giai thich ngan gon ly do (toi da 15 tu).
-        4. De xuat so tien cuoc (mac dinh 1000 den 5000).
+        4. De xuat so tien cuoc (mac dinh 1000 đến 5000).
 
         YEU CAU: Tra ve ket qua hoan toan bang dinh dang JSON thuan tuy (khong kem markdown) voi cau truc:
         {{
@@ -39,8 +38,9 @@ def analyze_taixiu():
         }}
         """
 
+        # Su dung gemini-1.5-flash de tranh loi 404
         response = client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-1.5-flash',
             contents=prompt,
         )
         
