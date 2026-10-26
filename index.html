@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool SA-MP Tài Xỉu - Chuyên Gia Soi Cầu</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #0f172a; color: #f8fafc; text-align: center; margin: 0; padding: 20px; }
+        .card { background: #1e293b; max-width: 550px; margin: 0 auto; padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.5); border: 1px solid #334155; }
+        h2 { color: #f59e0b; margin-top: 0; font-size: 24px; letter-spacing: 1px; }
+        .hidden { display: none; }
+        input[type="text"] { width: 80%; padding: 12px; font-size: 20px; text-transform: uppercase; text-align: center; border-radius: 8px; border: 2px solid #475569; background: #0f172a; color: #38bdf8; font-weight: bold; margin-bottom: 15px; letter-spacing: 3px; }
+        button { padding: 12px 24px; font-size: 16px; font-weight: bold; cursor: pointer; border: none; border-radius: 8px; margin: 5px; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .btn-start { background: #10b981; color: #fff; width: 100%; font-size: 18px; padding: 14px; }
+        .btn-action { background: #0284c7; color: #fff; width: 85%; }
+        .btn-result { padding: 15px 0; font-size: 20px; width: 45%; font-weight: bold; border-radius: 10px; }
+        .btn-tai { background: #ef4444; color: white; }
+        .btn-xiu { background: #3b82f6; color: white; }
+        .status-box { background: #0f172a; padding: 15px; border-radius: 10px; margin: 15px 0; text-align: left; line-height: 1.8; border: 1px solid #334155; }
+        .prediction-card { background: #334155; padding: 15px; border-radius: 12px; margin: 15px 0; border-left: 6px solid #f59e0b; }
+        .prediction-title { font-size: 24px; font-weight: bold; color: #fcc419; margin: 5px 0; }
+        .pattern-reason { font-size: 14px; color: #cbd5e1; font-style: italic; background: rgba(0,0,0,0.2); padding: 8px; border-radius: 6px; }
+        .history { word-break: break-all; letter-spacing: 4px; color: #38bdf8; font-weight: bold; font-size: 18px; }
+        .win-text { color: #4ade80; font-weight: bold; }
+        .loss-text { color: #f87171; font-weight: bold; }
+        .badge { background: #475569; padding: 3px 8px; border-radius: 4px; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>AI SOI CẦU SA-MP PRO v2.0</h2>
+
+    <!-- Màn hình 1: Nhập chuỗi khởi đầu -->
+    <div id="setup-screen">
+        <p style="color: #94a3b8;">Nhập chuỗi 10 phiên lịch sử để AI nhận diện dạng cầu:</p>
+        <input type="text" id="initial-sequence" maxlength="10" placeholder="TXTTXXTTXX">
+        <br>
+        <button class="btn-action" onclick="initSession()">KHỞI TẠO & PHÂN TÍCH</button>
+    </div>
+
+    <!-- Màn hình 2: Tiến hành ca chơi -->
+    <div id="game-screen" class="hidden">
+        <div class="status-box">
+            <div>📌 <b>Chuỗi 10 phiên:</b> <span id="current-history" class="history"></span></div>
+            <div>📊 <b>Lãi ròng:</b> <span id="net-profit" style="font-size:20px; font-weight:bold;">0</span> (<span id="win-count" class="win-text">0 Thắng</span> - <span id="loss-count" class="loss-text">0 Thua</span>)</div>
+        </div>
+
+        <div class="prediction-card">
+            <div style="font-size: 13px; color: #94a3b8; text-transform: uppercase; font-weight: bold;">Dự đoán phiên tiếp theo</div>
+            <div class="prediction-title" id="predicted-result">...</div>
+            <div class="pattern-reason" id="pattern-reason">Đang phân tích...</div>
+        </div>
+
+        <p style="margin-bottom: 8px; color: #94a3b8;">Xác nhận kết quả thực tế phiên này:</p>
+        <div style="display: flex; justify-content: space-between;">
+            <button class="btn-result btn-tai" onclick="processResult('T')">TÀI (T)</button>
+            <button class="btn-result btn-xiu" onclick="processResult('X')">XỈU (X)</button>
+        </div>
+
+        <div id="last-action-msg" style="margin-top: 15px; font-size: 15px;"></div>
+    </div>
+
+    <!-- Màn hình 3: Kết thúc ca -->
+    <div id="end-screen" class="hidden">
+        <h2 id="end-title"></h2>
+        <p id="end-desc" style="font-size: 18px; line-height: 1.6;"></p>
+        <br>
+        <button class="btn-start" onclick="resetApp()">BẮT ĐẦU CA MỚI</button>
+    </div>
+</div>
+
+<script>
+    let sequence = [];
+    let wins = 0;
+    let losses = 0;
+    let currentPrediction = '';
+    let currentReason = '';
+
+    function initSession() {
+        const input = document.getElementById('initial-sequence').value.trim().toUpperCase();
+        if (input.length !== 10 || !/^[TX]+$/.test(input)) {
+            alert("Vui lòng nhập đúng 10 ký tự chỉ bao gồm T và X!");
+            return;
+        }
+
+        sequence = input.split('');
+        wins = 0;
+        losses = 0;
+
+        document.getElementById('setup-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('last-action-msg').innerHTML = '';
+
+        analyzeAndPredict();
+        updateUI();
+    }
+
+    // THUẬT TOÁN SOI CẦU CHUYÊN GIA (PATTERN RECOGNITION ENGINE)
+    function analyzeAndPredict() {
+        const str = sequence.join('');
+        const len = sequence.length;
+        const lastChar = sequence[len - 1];
+        const prevChar = sequence[len - 2];
+
+        // 1. Nhận diện CẦU BỆT (Bệt >= 4 con liên tiếp -> Bắt tiếp bệt)
+        let betCount = 1;
+        for (let i = len - 2; i >= 0; i--) {
+            if (sequence[i] === lastChar) betCount++;
+            else break;
+        }
+
+        if (betCount >= 4) {
+            currentPrediction = lastChar;
+            currentReason = `🔥 Cầu Bệt ${lastChar} (${betCount} tay) -> Đánh tiếp ${lastChar} theo luồng.`;
+            return;
+        }
+
+        // 2. Nhận diện CẦU 1-1 (Nhảy xen kẽ ít nhất 4 tay: T-X-T-X hoặc X-T-X-T)
+        if (str.endsWith("TXT") || str.endsWith("XTX")) {
+            if (str.endsWith("TXTX") || str.endsWith("XTXT")) {
+                currentPrediction = lastChar === 'T' ? 'X' : 'T';
+                currentReason = `🔄 Cầu Đảo 1-1 cực đẹp -> Bắt tiếp nhịp đảo (${currentPrediction}).`;
+                return;
+            }
+        }
+
+        // 3. Nhận diện CẦU 2-2 (TT-XX-TT hoặc XX-TT-XX)
+        if (str.endsWith("TTXX") || str.endsWith("XXTT")) {
+            currentPrediction = lastChar; // Đang trong cặp thứ 2 -> Bắt nốt cho đủ cặp 2
+            currentReason = `⚡ Cầu 2-2 vừa xuất hiện -> Bắt nốt chân thứ 2 của (${currentPrediction}).`;
+            return;
+        }
+
+        // 4. Nhận diện CẦU 1-2-3 hoặc 3-2-1
+        // Nhịp 1-2-3 (Ví dụ: T - XX - TTT hoặc X - TT - XXX)
+        if (str.endsWith("TX") || str.endsWith("XT")) {
+            if (str.endsWith("TTX") || str.endsWith("XXT")) {
+                currentPrediction = lastChar; 
+                currentReason = `📐 Nghi vấn Cầu 1-2-3 -> Đi theo nhịp khuôn cầu.`;
+                return;
+            }
+        }
+
+        // 5. Nhận diện BẺ CẦU KHOẢNG NGẮN (2-1-2 hoặc 3-1-3)
+        if (str.endsWith("TXT") || str.endsWith("XTX")) {
+            currentPrediction = lastChar === 'T' ? 'X' : 'T';
+            currentReason = `🎯 Cầu Đảo Ngắn (1-1 nhẹ) -> Đánh đảo chiều sang (${currentPrediction}).`;
+            return;
+        }
+
+        // 6. THỐNG KÊ XÁC SUẤT & TỶ LỆ NGHÊNG (Nếu không rơi vào khuôn cầu chuẩn)
+        const countT = sequence.filter(x => x === 'T').length;
+        const countX = sequence.filter(x => x === 'X').length;
+
+        if (countT >= 7) {
+            currentPrediction = 'X';
+            currentReason = `⚠️ Tỷ lệ lệch khung TÀI (${countT}/10) -> Đánh XỈU hồi về cân bằng.`;
+        } else if (countX >= 7) {
+            currentPrediction = 'T';
+            currentReason = `⚠️ Tỷ lệ lệch khung XỈU (${countX}/10) -> Đánh TÀI hồi về cân bằng.`;
+        } else {
+            // Mặc định bẻ nhẹ theo xu hướng đảo 1-1 tay gần nhất
+            currentPrediction = lastChar === 'T' ? 'X' : 'T';
+            currentReason = `🎲 Khung cầu biến động -> Đánh Bẻ Ngược tay vừa ra (${currentPrediction}).`;
+        }
+    }
+
+    function processResult(actual) {
+        let msg = "";
+        if (actual === currentPrediction) {
+            wins++;
+            msg = `<div style="color:#4ade80; background:rgba(74,222,128,0.1); padding:10px; border-radius:6px; border:1px solid #4ade80;">✅ Phiên trước <b>DỰ ĐOÁN ĐÚNG</b>!</div>`;
+        } else {
+            losses++;
+            msg = `<div style="color:#f87171; background:rgba(248,113,113,0.1); padding:10px; border-radius:6px; border:1px solid #f87171;">❌ Phiên trước <b>DỰ ĐOÁN SAI</b>!</div>`;
+        }
+        document.getElementById('last-action-msg').innerHTML = msg;
+
+        // Dịch chuyển chuỗi 10 phiên
+        sequence.shift();
+        sequence.push(actual);
+
+        // Kiểm tra điều kiện chốt ca: Lãi ròng +2 (Chốt lãi) hoặc Thua ròng -3 (Chốt lỗ)
+        let netProfit = wins - losses;
+
+        if (netProfit >= 2) {
+            finishGame(true, `Chúc mừng! Bạn đã hoàn thành ca chơi với LÃI RÒNG +2 (Thắng ${wins} - Thua ${losses}).`);
+            return;
+        } else if (losses - wins >= 3) {
+            finishGame(false, `Chạm hạn mức dừng! Lỗ ròng -3 (Thắng ${wins} - Thua ${losses}). Hãy nghỉ ngơi ca sau!`);
+            return;
+        }
+
+        analyzeAndPredict();
+        updateUI();
+    }
+
+    function updateUI() {
+        document.getElementById('current-history').innerText = sequence.join(' ');
+        document.getElementById('win-count').innerText = wins + " Thắng";
+        document.getElementById('loss-count').innerText = losses + " Thua";
+        
+        let net = wins - losses;
+        document.getElementById('net-profit').innerText = (net > 0 ? "+" + net : net);
+        document.getElementById('net-profit').style.color = net > 0 ? '#4ade80' : (net < 0 ? '#f87171' : '#fff');
+
+        document.getElementById('predicted-result').innerText = currentPrediction === 'T' ? '🔴 TÀI (T)' : '🔵 XỈU (X)';
+        document.getElementById('predicted-result').style.color = currentPrediction === 'T' ? '#ef4444' : '#3b82f6';
+        
+        document.getElementById('pattern-reason').innerText = currentReason;
+    }
+
+    function finishGame(isWin, message) {
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('end-screen').classList.remove('hidden');
+
+        const titleEl = document.getElementById('end-title');
+        if (isWin) {
+            titleEl.innerText = "🏆 CHỐT LÃI THÀNH CÔNG!";
+            titleEl.style.color = "#4ade80";
+        } else {
+            titleEl.innerText = "🛑 CHỐT LỖ CỦA CA!";
+            titleEl.style.color = "#f87171";
+        }
+
+        document.getElementById('end-desc').innerText = message;
+    }
+
+    function resetApp() {
+        document.getElementById('initial-sequence').value = '';
+        document.getElementById('end-screen').classList.add('hidden');
+        document.getElementById('setup-screen').classList.remove('hidden');
+    }
+</script>
+
+</body>
+</html>
